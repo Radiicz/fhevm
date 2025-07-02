@@ -1,0 +1,67 @@
+1. Solidity Smart Contract (Encrypted Addition)
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@zama/fhevm/lib/TFHE.sol"; // Use appropriate FHEVM library
+
+contract EncryptedAdder {
+    // Add two encrypted integers
+    function addEncrypted(bytes calldata encA, bytes calldata encB) public pure returns (bytes memory) {
+        euint8 a = TFHE.asEuint8(encA);
+        euint8 b = TFHE.asEuint8(encB);
+        euint8 result = a + b;
+        return TFHE.asCiphertext(result);
+    }
+}
+
+2. Encrypt & Interact Using JS (via Hardhat + FHE SDK)
+To test this, you’ll need:
+
+Zama’s @zama/fhevm-js
+
+Zama’s Devnet (or local FHEVM node)
+
+Hardhat configured to deploy on Zama’s FHEVM network
+
+const { createInstance } = require("@zama/fhevm-js");
+const { ethers } = require("ethers");
+
+async function main() {
+  // Connect to FHEVM-compatible provider
+  const provider = new ethers.JsonRpcProvider("https://devnet.zama.ai"); // replace with valid RPC
+  const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY", provider);
+
+  const fhevm = await createInstance({ chainId: "devnet", signer: wallet });
+
+  // Encrypt two numbers
+  const encryptedA = await fhevm.encrypt8(7); // encrypt 7
+  const encryptedB = await fhevm.encrypt8(5); // encrypt 5
+
+  const contractAddress = "DEPLOYED_CONTRACT_ADDRESS";
+  const abi = [ "function addEncrypted(bytes calldata a, bytes calldata b) public pure returns (bytes)" ];
+  const contract = new ethers.Contract(contractAddress, abi, wallet);
+
+  const resultCipher = await contract.addEncrypted(encryptedA, encryptedB);
+
+  // Decrypt result
+  const result = await fhevm.decrypt(resultCipher);
+  console.log("Decrypted result:", result); // Should log: 12
+}
+
+main();
+
+
+📦 Optional: Hardhat Deployment Example
+npm install --save-dev hardhat @zama/fhevm-hardhat-plugin
+require("@zama/fhevm-hardhat-plugin");
+
+module.exports = {
+  networks: {
+    devnet: {
+      url: "https://devnet.zama.ai",
+      accounts: [process.env.PRIVATE_KEY]
+    }
+  },
+  solidity: "0.8.20"
+};
