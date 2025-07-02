@@ -1,0 +1,33 @@
+Encrypted Voting Smart Contract (Solidity)
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@fhenixprotocol/contracts/FHE.sol";
+import "@fhenixprotocol/contracts/FHEParams.sol";
+
+contract EncryptedVoting {
+    // Encrypted vote counts
+    euint voteYes;
+    euint voteNo;
+
+    constructor() {
+        voteYes = FHE.asEuint32(0);
+        voteNo = FHE.asEuint32(0);
+    }
+
+    function vote(bytes calldata encryptedVote) external {
+        euint32 vote = FHE.asEuint32(encryptedVote);
+
+        // Vote "1" = Yes, Vote "0" = No
+        if (FHE.eq(vote, FHE.asEuint32(1))) {
+            voteYes = FHE.add(voteYes, FHE.asEuint32(1));
+        } else {
+            voteNo = FHE.add(voteNo, FHE.asEuint32(1));
+        }
+    }
+
+    // Only authorized parties can decrypt (off-chain or with view keys)
+    function getEncryptedResults() external view returns (bytes memory, bytes memory) {
+        return (FHE.toBytes(voteYes), FHE.toBytes(voteNo));
+    }
+}
